@@ -1,55 +1,61 @@
-import React, {useEffect, useState, useCallback, useRef} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import * as StompJS from '@stomp/stompjs';
 import Container from './Container';
-
-export type player = {
-
-}
+import {StompConfig} from "@stomp/stompjs";
 
 const TestContainer = () => {
     const [content, setContent] = useState("");
-
-    const client = new StompJS.Client({
-        brokerURL: 'ws://localhost:8080/ws/websocket',
-        connectHeaders: {
-            login: 'user',
-            password: 'password',
-        },
-        debug: function (str) {
-            console.log(str);
-        },
-    })
+    const client : any = useRef({});
 
     useEffect(() => {
-        client.activate();
-        client.onConnect = () => {
-            client.subscribe('/topic/message', (data : any) => {
-                const newMessage: string = JSON.parse(data.body).message as string;
-                addContent(newMessage);
-            });
-        }
+        connect();
         return () => disConnect();
-    }, [content]);
+    }, []);
+
+    const connect = () => {
+        client.current = new StompJS.Client({
+            brokerURL: 'ws://localhost:8080/ws/websocket',
+            connectHeaders: {
+                login: 'user',
+                password: 'password',
+            },
+            onConnect: () => {
+                subscribe();
+            },
+            debug: function (str: any) {
+                console.log(str);
+            },
+        })
+
+        client.current.activate();
+    }
+
+    const subscribe = () => {
+        client.current.subscribe('/topic/message', (data: any) => {
+            const newMessage: string = JSON.parse(data.body).message as string;
+            addContent(newMessage);
+        });
+    }
 
     const addContent = (message: string) => {
         setContent(content.concat(message));
     }
 
     const handler = (message: string) => {
-        if (!client.connected)
-            return ;
+        if (!client.current.connected)
+            return;
 
-        client.publish({
-            destination : '/app/hello',
-            body : JSON.stringify({
-                message : message
+        client.current.publish({
+            destination: '/draft/hello',
+            body: JSON.stringify({
+                message: message
             }),
         })
     }
 
     const disConnect = () => {
-        if (client.connected)
-            client.deactivate();
+        if (client.current.connected)
+            client.current.deactivate();
     }
 
     return (
